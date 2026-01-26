@@ -1,12 +1,13 @@
-import asyncio
+import aiohttp
 
-from fastapi import FastAPI
-from services.api_kudago import print_url
+from fastapi import FastAPI, Depends
+from services.api_kudago import get_events
+from dependencies.http_client import get_aiohttp_session
 
 app = FastAPI()
 
 @app.get("/")
-def index():
-    return {"result": print_url()}
+async def index(session: aiohttp.ClientSession = Depends(get_aiohttp_session)):
+    return {"result": await get_events(session)}
 
     
