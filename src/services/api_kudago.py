@@ -1,8 +1,9 @@
 import aiohttp
 
+from asyncio import gather
 from datetime import datetime
 from src.core.config import config
-from src.schemas.kudado_schema import (
+from src.schemas.kudago_schema import (
     SchemaGetEvents,
     SchemaGetPlaces,
     SchemaGetCollections,
@@ -269,3 +270,50 @@ async def get_news(session: aiohttp.ClientSession) -> SchemaGetNews:
     async with session.get(url, params=param) as resp:
         raw = await resp.json()
     return SchemaGetNews(**raw)
+
+
+def process_collect_data(data: List[Dict]) -> List:
+    data_list = []
+    for result in data:
+        # Список мероприятий
+        if SchemaGetCollections is type(result):
+            for collect in result.results:
+                data_list.append(
+                        {
+                        "title": collect.title,
+                        "site_url": collect.site_url
+                        }
+                    )
+        # Список событий
+        if SchemaGetEvents is type(result):
+            for events in result.results:
+                event = events.model_dump()
+                try:
+                    pass
+                    place_id = event.place[0]
+                    print(place_id)
+                    place = get_places(place_id).get("results")[0]
+                except (TypeError, AttributeError, IndexError):
+                    place = {}
+
+                data_list.append(
+                        {
+                            "title": event.get("title"),
+                            "description": event.get("description"),
+                            "place": place,
+                            "price": event.get("price"),
+                            "image": event.get("images")[0].get("image"),
+                            "dates": date_event(event.get("dates"))
+                            }
+                        )
+    return data_list
+
+
+async def collect_data(session: aiohttp.ClientSession) -> List:
+    result = await gather(
+        get_collections(session),
+        get_events(session),
+        get_movie_list(session),
+        get_news(session),
+    )
+    return process_collect_data(result)
