@@ -1,9 +1,11 @@
 import aiohttp
 
-from fastapi import FastAPI, Depends
-from services.api_kudago import get_events, get_places, get_collections, get_movie_list, get_news
-from schemas.kudado_schema import SchemaGetEvents, SchemaGetPlaces, SchemaGetCollections, SchemaGetMovieList, SchemaGetNews
 from dependencies.http_client import get_aiohttp_session
+from fastapi import FastAPI, Depends
+from schemas.kudago_schema import SchemaGetEvents, SchemaGetPlaces, SchemaGetCollections, SchemaGetMovieList, SchemaGetNews
+from services.api_kudago import get_events, get_places, get_collections, get_movie_list, get_news, collect_data
+from typing import List, Dict
+
 
 app = FastAPI()
 
@@ -37,3 +39,9 @@ async def movie_list(session: aiohttp.ClientSession = Depends(get_aiohttp_sessio
 async def news(session: aiohttp.ClientSession = Depends(get_aiohttp_session)) -> SchemaGetNews:
     result = await get_news(session)
     return result
+
+@app.get("/collect")
+async def collect(session: aiohttp.ClientSession = Depends(get_aiohttp_session)) -> List:
+    result = await collect_data(session)
+    return result
+    
