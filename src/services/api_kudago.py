@@ -1,9 +1,16 @@
 import aiohttp
-import time
 
 from datetime import datetime
 from src.core.config import config
-from src.schemas.kudado_schema import SchemaEventValidator
+from src.schemas.kudado_schema import (
+    SchemaGetEvents,
+    SchemaGetPlaces,
+    SchemaGetCollections,
+    SchemaGetMovieList,
+    SchemaGetNews,
+    )
+from typing import List, Dict
+
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -13,7 +20,7 @@ def to_unixtime() -> int:
     Returns:
         int: 1763715782 unixtime формат, целое число 
     """
-    return int(time.mktime(datetime.now().timetuple()))
+    return int(datetime.now().timestamp())
 
 
 def to_datetime(unixtime: int) -> str:
@@ -24,7 +31,37 @@ def to_datetime(unixtime: int) -> str:
     return str(datetime.fromtimestamp(unixtime))
 
 
-async def get_events(session: aiohttp.ClientSession) -> SchemaEventValidator:
+def date_event(dates: List[Dict[str, int]]) -> str:
+    """Преобразовать список дат в строку
+    Обходит список дат, преобразует из unixtime в datetime и сохраняет в строку
+    Args:
+        dates (list): список словарей с датами
+        [
+        {'end': 1622448000, 'start': 1618732800},
+        {'end': 1633593600, 'start': 1633593600},
+        {'end': 1633692600, 'start': 1633692600},
+        ...
+        ]
+    Returns:
+        str: С 2025-12-13 00:00:00 по 2026-01-12 00:00:00
+    """
+    result = []
+    now_unix = int(datetime.now().timestamp())
+    
+    for date_dict in dates:
+        start_unix = date_dict.get("start")
+        if start_unix is None or start_unix < now_unix:
+            continue
+        end_unix = date_dict.get("end", start_unix)
+        
+        start_dt = datetime.fromtimestamp(start_unix)
+        end_dt = datetime.fromtimestamp(end_unix)
+        result.append(f"С {start_dt} по {end_dt}")
+    
+    return "\n".join(result) if result else "Даты не найдены"
+
+
+async def get_events(session: aiohttp.ClientSession) -> SchemaGetEvents:
     """Получить список мероприятий
     Returns:
         dict: Возвращается словарь 
@@ -73,4 +110,162 @@ async def get_events(session: aiohttp.ClientSession) -> SchemaEventValidator:
     url = config.get_full_url()
     async with session.get(f"{url}/events", params=param) as resp:
         raw = await resp.json()
-    return SchemaEventValidator(**raw)
+    return SchemaGetEvents(**raw)
+
+
+async def get_places(session: aiohttp.ClientSession, place_id: int|None) -> SchemaGetPlaces:
+    """Получить назвние и адрес места по id.
+    Args:
+        place_id (int): id места
+    Returns:
+        dict: Возвращает словарь с адресом, именем места
+            {
+              "count": 1,
+              "next": null,
+              "previous": null,
+              "results": [
+                {
+                  "id": 336,
+                  "title": "клуб А2",
+                  "address": "просп. Медиков, д. 3"
+                }
+              ]
+            }
+    """
+    if place_id is None:
+        return {}
+    param = {
+            "page": 1,
+            "page_size": 1,
+            "fields":"id,title,address",
+            "text_format": "text",
+            "ids": place_id
+            }
+    url = config.get_full_url()
+    async with session.get(f"{url}/places", params=param) as resp:
+        raw = await resp.json()
+    return SchemaGetPlaces(**raw)
+
+
+async def get_collections(session: aiohttp.ClientSession) -> SchemaGetCollections:
+    """Получить список подборок редакции
+    При тестировании от текущей даты, апи
+    возвращает только две актуальных подборки.
+    Returns:
+        dict: Возвращает словарь с результатами по событиям
+            {
+              "count": 1626,
+              "next": "https://kudago.com/public-api/v1.4/lists/?fields=title%2Csite_url&location=spb&page=2&page_size=2&text_format=text",
+              "previous": null,
+              "results": [
+                {
+                  "title": "Где в Петербурге научиться рисовать",
+                  "site_url": "https://kudago.com/spb/list/gde-v-peterburge-nauchitsya/"
+                },
+                {
+                  "title": "Главные номинанты премии «Оскар—2026»",
+                  "site_url": "https://kudago.com/all/list/glavnyie-nominantyi-premii-oskar-2026/"
+                }
+              ]
+            }
+    """
+    param = {
+            "page": 1,
+            "page_size": 2,
+            "location": "spb",
+            "fields": "title,site_url",
+           "text_format": "text"
+            }
+    url = f"{config.get_full_url()}/lists"
+    async with session.get(url, params=param) as resp:
+        raw = await resp.json()
+    return SchemaGetCollections(**raw)
+
+
+async def get_movie_list(session: aiohttp.ClientSession) -> SchemaGetMovieList:
+    """Получить список фильмов.
+    Функция возвращает список словарей в колличестве
+    трёх штук, где есть описание фильма, его название,
+    дата публикации и ссылка на постер.
+    Returns:
+        dict: Пример возвращаемого словаря
+{
+  "count": 36,
+  "next": "https://kudago.com/public-api/v1.4/movies/?actual_since=1770113358&fields=id%2Ctitle%2Cdescription%2Cimages&location=spb&page=2&page_size=3&text_format=text",
+  "previous": null,
+  "results": [
+    {
+      "id": 6681,
+      "title": "Код: Неизвестен",
+      "description": "Фильм Михаэля Ханеке о случайности как движущей силе современного мира.",
+      "images": [
+        {
+          "image": "https://media.kudago.com/images/movie/d2/da/d2dac04c5db3daf02497964eb9b7fe69.webp",
+          "source": {
+            "name": "kinopoisk.ru",
+            "link": "https://www.kinopoisk.ru/film/18342/stills/page/1/"
+          }
+        },
+        {
+          "image": "https://media.kudago.com/images/movie/ec/1d/ec1d1b592f5ae538968326588426a9df.webp",
+          "source": {
+            "name": "kinopoisk.ru",
+            "link": "https://www.kinopoisk.ru/film/18342/stills/page/1/"
+          }
+        },
+      ]
+  ]
+}
+}
+    """
+    param = {
+        "page": 1,
+        "page_size": 3,
+        "fields": "id,title,description,images",
+        "location": "spb",
+        "text_format": "text",
+        "actual_since": to_unixtime(),
+    }
+    url = f"{config.get_full_url()}/movies"
+    async with session.get(url, params=param) as resp:
+        raw = await resp.json()
+    return SchemaGetMovieList(**raw)
+
+
+async def get_news(session: aiohttp.ClientSession) -> SchemaGetNews:
+    """Получить новости на сегодняшний день
+    Returns:
+        dict: Пример вывода
+        {'count': 1231,
+        'next': 'https://kudago.com/public-api/v1.4/news/?actual_only=True&fields=publication_date%2Ctitle%2Cdescription%2Cimages%2Csite_url&location=spb&page=2&page_size=1',
+        'previous': None,
+        'results': [{'description': '<p>Каждый календарный день — это целый '
+                             'калейдоскоп праздников, за которыми стоят самые '
+                             'разнообразные истории, традиции и смыслы. 24 '
+                             'ноября на первый взгляд кажется ничем не '
+                             'примечательной датой, но стоит заглянуть глубже '
+                             '— и перед нами откроется удивительный мир, '
+                             'наполненный как древними языческими обрядами, '
+                             'так и современными социальными движениями. От '
+                             'Домового, пьющего молоко, до торжеств в честь '
+                             'японской кухни — всё это празднуется именно в '
+                             'этот день</p>',
+              'images': [{'image': 'https://media.kudago.com/images/news/e2/08/e2087378c9b65efd72483499222d970c.jpg',
+                          'source': {'link': 'https://www.shutterstock.com/ru/image-photo/closeup-walrus-odobenus-rosmarus-colony-on-2359243961',
+                                     'name': 'LouieLea/FOTODOM/Shutterstock'}}],
+              'publication_date': 1763932208,
+              'site_url': 'https://kudago.com/all/news/24-noyabrya-kakoj-prazdnik/',
+              'title': '24 ноября: какой праздник сегодня'}]}
+    """
+    param = {
+        "page": 1,
+        "page_size": 1,
+        "fields": "title,description,images,site_url",
+        "actual_only": 1,      
+        "location": "spb",
+        "text_format": "text"
+        }
+    url = f"{config.get_full_url()}/news"
+    async with session.get(url, params=param) as resp:
+        raw = await resp.json()
+    return SchemaGetNews(**raw)
