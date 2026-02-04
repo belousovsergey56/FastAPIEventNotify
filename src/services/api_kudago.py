@@ -13,9 +13,6 @@ from src.schemas.kudago_schema import (
 from typing import List, Dict
 
 
-DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
-
-
 def to_unixtime() -> int:
     """Получить текущее время в unixtime формате.
     Returns:
@@ -276,25 +273,26 @@ async def process_collect_data(session: aiohttp.ClientSession, data: List[Dict])
     data_list = []
     for result in data:
         # Список мероприятий
-        if SchemaGetCollections is type(result):
+        if isinstance(result, SchemaGetCollections):
             for collect in result.results:
+                collect = collect.model_dump()
                 data_list.append(
                         {
-                        "title": collect.title,
-                        "site_url": collect.site_url
+                        "title": collect.get("title"),
+                        "site_url": collect.get("site_url")
                         }
                     )
         # Список событий
-        if SchemaGetEvents is type(result):
+        if isinstance(result, SchemaGetEvents):
             for events in result.results:
                 event = events.model_dump()
                 try:
                     place_id = event.get("place").get("id")
                     place = await get_places(session, place_id)
                     place = place.model_dump().get("results")[0]
-                    print(place)
+                    place = f"{place.get("title")}, {place.get("address")}"
                 except (TypeError, AttributeError, IndexError):
-                    place = {}
+                    place = ""
 
                 data_list.append(
                         {
@@ -307,7 +305,7 @@ async def process_collect_data(session: aiohttp.ClientSession, data: List[Dict])
                             }
                         )
         # список фильмов
-        if SchemaGetMovieList is type(result):
+        if isinstance(result, SchemaGetMovieList):
             for movie in result.results:
                 movie = movie.model_dump()
                 data_list.append(
@@ -318,7 +316,7 @@ async def process_collect_data(session: aiohttp.ClientSession, data: List[Dict])
                         }
                     )
         # список новостей
-        if SchemaGetNews is type(result):
+        if isinstance(result, SchemaGetNews):
             for tidings in result.results:
                 tidings = tidings.model_dump()
                 data_list.append(
