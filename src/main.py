@@ -1,10 +1,13 @@
 import aiohttp
+import uvicorn
 
-from dependencies.http_client import get_aiohttp_session
 from fastapi import FastAPI, Depends
-from schemas.kudago_schema import SchemaGetEvents, SchemaGetPlaces, SchemaGetCollections, SchemaGetMovieList, SchemaGetNews
-from services.api_kudago import get_events, get_places, get_collections, get_movie_list, get_news, collect_data
-from typing import List, Dict
+from src.dependencies.http_client import get_aiohttp_session
+from src.schemas.kudago_schema import SchemaGetEvents, SchemaGetPlaces, SchemaGetCollections, SchemaGetMovieList, SchemaGetNews
+from src.schemas.tg_schema import CheckBotSchema
+from src.services.api_kudago import get_events, get_places, get_collections, get_movie_list, get_news, collect_data
+from src.services.api_telegram import check_bot
+from typing import List
 
 
 app = FastAPI()
@@ -44,4 +47,17 @@ async def news(session: aiohttp.ClientSession = Depends(get_aiohttp_session)) ->
 async def collect(session: aiohttp.ClientSession = Depends(get_aiohttp_session)) -> List:
     result = await collect_data(session)
     return result
-    
+
+@app.get("/check_bots")
+async def check_bots(session: aiohttp.ClientSession = Depends(get_aiohttp_session)) -> CheckBotSchema:
+    result = await check_bot(session)
+    return result   
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "src.main:app",
+        host="0.0.0.0",
+        port=5000,
+        reload=True
+    )
