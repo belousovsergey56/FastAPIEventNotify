@@ -272,7 +272,7 @@ async def get_news(session: aiohttp.ClientSession) -> SchemaGetNews:
     return SchemaGetNews(**raw)
 
 
-def process_collect_data(data: List[Dict]) -> List:
+async def process_collect_data(session: aiohttp.ClientSession, data: List[Dict]) -> List:
     data_list = []
     for result in data:
         # Список мероприятий
@@ -289,10 +289,10 @@ def process_collect_data(data: List[Dict]) -> List:
             for events in result.results:
                 event = events.model_dump()
                 try:
-                    pass
-                    place_id = event.place[0]
-                    print(place_id)
-                    place = get_places(place_id).get("results")[0]
+                    place_id = event.get("place").get("id")
+                    place = await get_places(session, place_id)
+                    place = place.model_dump().get("results")[0]
+                    print(place)
                 except (TypeError, AttributeError, IndexError):
                     place = {}
 
@@ -306,6 +306,29 @@ def process_collect_data(data: List[Dict]) -> List:
                             "dates": date_event(event.get("dates"))
                             }
                         )
+        # список фильмов
+        if SchemaGetMovieList is type(result):
+            for movie in result.results:
+                movie = movie.model_dump()
+                data_list.append(
+                    {
+                        "title": movie.get("title"),
+                        "description": movie.get("description"),
+                        "image": movie.get("images")[0].get("image"),
+                        }
+                    )
+        # список новостей
+        if SchemaGetNews is type(result):
+            for tidings in result.results:
+                tidings = tidings.model_dump()
+                data_list.append(
+                        {
+                            "title": tidings.get("title"),
+                            "description": tidings.get("description"),
+                            "image": tidings.get("images")[0].get("image"),
+                            "site_url": tidings.get("site_url")
+                            }
+                        )
     return data_list
 
 
@@ -316,4 +339,4 @@ async def collect_data(session: aiohttp.ClientSession) -> List:
         get_movie_list(session),
         get_news(session),
     )
-    return process_collect_data(result)
+    return await process_collect_data(session, result)
