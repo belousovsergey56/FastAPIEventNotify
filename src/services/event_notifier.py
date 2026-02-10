@@ -1,5 +1,4 @@
 from aiohttp import ClientSession
-# from src.core.config import config
 from src.services.api_kudago import collect_data
 from src.services.api_telegram import send_message, send_image
 
