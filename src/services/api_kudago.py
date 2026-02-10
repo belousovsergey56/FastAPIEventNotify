@@ -56,7 +56,7 @@ def date_event(dates: List[Dict[str, int]]) -> str:
         end_dt = datetime.fromtimestamp(end_unix)
         result.append(f"С {start_dt} по {end_dt}")
     
-    return "\n".join(result) if result else "Даты не найдены"
+    return "\n".join(result) if result else ""
 
 
 async def get_events(session: aiohttp.ClientSession) -> SchemaGetEvents:
