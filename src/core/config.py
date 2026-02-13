@@ -13,7 +13,8 @@ class Settings(BaseSettings):
     timeout: int = 30
     DATABASE_ENGINE: str = "sqlite+aiosqlite:///"
     DB_FILE: str = "database/chats.db"
-
+    DB_URL: str = f"{DATABASE_ENGINE}src/{DB_FILE}"
+    
     _client_timeout: aiohttp.ClientTimeout = PrivateAttr(default=None)
     
     model_config = SettingsConfigDict(
