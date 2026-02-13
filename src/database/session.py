@@ -1,18 +1,18 @@
 from src.core.config import config
 from sqlalchemy.ext.asyncio import (
-    AsyncConnection,
+    AsyncSession,
     async_sessionmaker,
     create_async_engine,
     )
 
 engine = create_async_engine(
-    config.get_db_url(),
+    config.DB_URL,
     echo=True,
     future=True
 )
 
 async_session = async_sessionmaker(
-    engine,
-    class_=AsyncConnection,
+    bind=engine,
+    class_=AsyncSession,
     expire_on_commit=False
 )
