@@ -8,6 +8,7 @@ dependencies = [
     "aiohttp>=3.13.3",
     "aiosqlite>=0.22.1",
     "alembic>=1.18.4",
+    "apscheduler>=3.11.2",
     "fastapi[standard]>=0.128.0",
     "sqlalchemy>=2.0.46",
 ]
