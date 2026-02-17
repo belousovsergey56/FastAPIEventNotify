@@ -3,6 +3,7 @@ import asyncio
 import sys
 import uvicorn
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -11,9 +12,24 @@ from src.dependencies.database import get_db
 from src.database.crud import create_chat_id, delete_chat, get_chat_list, read_chat
 from src.services.api_telegram import check_bot, send_message, set_webhook
 from src.services.event_notifier import send_event_response
+from src.services.scheduler import scheduler, background_notification
 from sqlalchemy.ext.asyncio import AsyncSession
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler.add_job(background_notification, "cron", hour=12, minute=0)
+    scheduler.start()
+    print("Планировщик запущен\n")
+    yield
+    scheduler.shutdown()
+    print("Планировщик остановлен\n")
+
+
+app = FastAPI(
+    title="FastAPI Event notify",
+    lifespan=lifespan
+)
 
 
 @app.get("/")
