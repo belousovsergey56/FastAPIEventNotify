@@ -18,3 +18,9 @@ class CheckBotSchema(BaseModel):
     result: Optional[CheckBotResult] = None
     error_code: Optional[int] = None
     desctiption: Optional[str] = None
+
+class WebHookSchema(BaseModel):
+    ok: bool
+    result: Optional[bool] = None
+    description: str
+    error_code: Optional[int] = None
