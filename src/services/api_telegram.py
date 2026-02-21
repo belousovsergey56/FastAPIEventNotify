@@ -1,7 +1,7 @@
 import aiohttp
 
 from src.core.config import config
-from src.schemas.tg_schema import CheckBotSchema
+from src.schemas.tg_schema import CheckBotSchema, WebHookSchema
 
 URL = f"{config.tg_url}/bot{config.tg_token}"
 
@@ -77,7 +77,20 @@ async def send_image(
     return raw
 
 
-async def set_webhook(session: aiohttp.ClientSession, https_url: str):
+async def set_webhook(
+    session: aiohttp.ClientSession,
+    https_url: str
+) -> WebHookSchema:
+    """Установить вебхук с ТГ
+    Args:
+        session (ClientSession): http сессия
+        https_url (str): https адрес
+    Returns:  
+         ok: bool
+         result: Optional[bool] = None
+         description: str
+         error_code: Optional[int] = None
+    """
     param = {
             "url": f"{https_url}/webhook"
             }
