@@ -6,15 +6,13 @@ from pathlib import Path
 BASE_DIR = Path(".").resolve()
 
 class Settings(BaseSettings):
+    """Основные настройки приложения"""
     url_kuda_go: str
     api_version: str
     tg_url: str
     tg_token: str
     timeout: int = 30
-    DATABASE_ENGINE: str = "sqlite+aiosqlite:///"
-    DB_FILE: str = "database/chats.db"
-    DB_URL: str = f"{DATABASE_ENGINE}src/{DB_FILE}"
-    
+    db_url: str
     _client_timeout: aiohttp.ClientTimeout = PrivateAttr(default=None)
     
     model_config = SettingsConfigDict(
@@ -24,22 +22,25 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-
-    def get_db_url(self) -> str:
-        db_path = BASE_DIR / self.DB_FILE
-        if self.DATABASE_ENGINE.startswith(("sqlite", "aiosqlite")):
-            return f"{self.DATABASE_ENGINE}{db_path}"
-        else:
-            return self.DATABASE_ENGINE
-
     def get_full_url(self) -> str:
-        return f"{self.url_kuda_go}/{self.api_version}"
+        """Полный URL к API KudaGo с учетом версии."""
+        return f"{self.url_kuda_go.rstrip("/")}/{self.api_version}"
 
     def get_timeout(self) -> aiohttp.ClientTimeout:
+        """Объект таймаута для aiohttp."""
         return self._client_timeout
 
     @model_validator(mode="after")
     def init_timeout(self) -> "Settings":
+        """
+        Инициализирует объект ClientTimeout после загрузки настроек.
+        
+        Этот метод берет значение из поля `timeout` (целое число секунд) и 
+        конвертирует его в специальный объект `aiohttp.ClientTimeout`. 
+        Это необходимо, так как библиотека aiohttp требует именно объект 
+        для управления лимитами времени на разных этапах HTTP-запроса 
+        (установление соединения, чтение данных и т.д.).
+        """
         self._client_timeout = aiohttp.ClientTimeout(total=self.timeout)
         return self
 
