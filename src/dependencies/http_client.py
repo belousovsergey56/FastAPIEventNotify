@@ -1,9 +1,22 @@
-import aiohttp
-
-from src.core.config import config
-from typing import AsyncGenerator
+from aiohttp import ClientSession
 
 
-async def get_aiohttp_session() -> AsyncGenerator[aiohttp.ClientSession, None]:
-    async with aiohttp.ClientSession(timeout=config.get_timeout()) as session:
-        yield session
+class HttpClient:
+    session: ClientSession = None
+
+
+http_client = HttpClient()
+
+
+async def get_aiohttp_session() -> ClientSession:
+    """
+    Возвращает общую асинхронную HTTP-сессию.
+
+    Используется как зависимость (Dependency) в эндпоинтах FastAPI. 
+    Сессия управляется жизненным циклом приложения (lifespan), что позволяет
+    переиспользовать TCP-соединения (connection pooling) и ускорять запросы.
+
+    Returns:
+        aiohttp.ClientSession: Глобальный объект асинхронной сессии.
+    """
+    return http_client.session
