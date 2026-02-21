@@ -4,9 +4,15 @@ from typing import AsyncGenerator
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with async_session() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+    """
+    Создает и управляет асинхронной сессией базы данных.
 
+    Используется как зависимость (Dependency) в эндпоинтах FastAPI. 
+    Гарантирует закрытие сессии после завершения обработки запроса, 
+    даже в случае возникновения исключений.
+
+    Yields:
+        AsyncSession: Объект асинхронной сессии SQLAlchemy.
+    """
+    async with async_session() as session:
+        yield session
