@@ -10,7 +10,6 @@ from src.schemas.kudago_schema import (
     SchemaGetMovieList,
     SchemaGetNews,
     )
-from typing import List, Dict
 
 
 def to_unixtime() -> int:
@@ -29,7 +28,7 @@ def to_datetime(unixtime: int) -> str:
     return str(datetime.fromtimestamp(unixtime))
 
 
-def date_event(dates: List[Dict[str, int]]) -> str:
+def date_event(dates: list[dict[str, int]]) -> str:
     """Преобразовать список дат в строку
     Обходит список дат, преобразует из unixtime в datetime и сохраняет в строку
     Args:
@@ -269,7 +268,18 @@ async def get_news(session: aiohttp.ClientSession) -> SchemaGetNews:
     return SchemaGetNews(**raw)
 
 
-async def process_collect_data(session: aiohttp.ClientSession, data: List[Dict]) -> List:
+async def process_collect_data(
+    session: aiohttp.ClientSession,
+    data: list[dict]
+) -> list[dict]:
+    """Формирует полученные данные в список
+    Полученные данные по событиям, подготавливает и добавляет в список
+    Args:
+        session (ClientSession): http сессия
+        data (list[dict]): сырой список словарей с событиями
+    Returns:
+        list[dict]: обработанный список словарей с событиями
+    """
     data_list = []
     for result in data:
         # Список мероприятий
@@ -330,7 +340,8 @@ async def process_collect_data(session: aiohttp.ClientSession, data: List[Dict])
     return data_list
 
 
-async def collect_data(session: aiohttp.ClientSession) -> List:
+async def collect_data(session: aiohttp.ClientSession) -> list[dict]:
+    """Получаяет события, обрабатывает и возвращает списком"""
     result = await gather(
         get_collections(session),
         get_events(session),
