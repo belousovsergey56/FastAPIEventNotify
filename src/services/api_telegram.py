@@ -31,7 +31,7 @@ async def check_bot(session: aiohttp.ClientSession) -> CheckBotSchema:
     """
     async with session.get(f"{URL}/getMe") as resp:
         raw = await resp.json()
-        return CheckBotSchema(**raw)
+        return raw
 
 
 async def send_message(session: aiohttp.ClientSession, chat_id: str, message: str):
