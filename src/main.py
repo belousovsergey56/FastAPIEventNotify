@@ -1,13 +1,13 @@
 import aiohttp
-import asyncio
 import sys
 import uvicorn
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
-from fastapi import Request, HTTPException
+from fastapi import Request
 from fastapi.responses import JSONResponse, Response
-from src.dependencies.http_client import get_aiohttp_session
+from src.core.config import config
+from src.dependencies.http_client import get_aiohttp_session, http_client
 from src.dependencies.database import get_db
 from src.database.crud import create_chat_id, delete_chat, get_chat_list, read_chat
 from src.models.chats import Chat
@@ -21,17 +21,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
-    """Фоновая задача
-     Фоновая задача, запускаемая вместе с FastAPI приложением,
-     останавливается, когда останавливается приложение.
-     Данная функция запускает планировщик задач, который будет работать в фоне.
-     Args:
-         app (FastAPI): эксемпляр приложения FastAPI   
-    """
+    """Управление ресурсами"""
+    http_client.session = aiohttp.ClientSession(timeout=config.get_timeout())
+
+    webhook_url = sys.argv[1] if len(sys.argv) > 1 else "https://127.0.0.1"
+    try:
+        status = await set_webhook(http_client.session, webhook_url)
+        print(f"Вебхук установлен: {webhook_url}. Статус: {status}")
+    except Exception as e:
+        print(f"Ошибка установки вебхука: {e}")
+
     scheduler.add_job(background_notification, "cron", hour=12, minute=0)
     scheduler.start()
     print("Планировщик запущен\n")
     yield
+    await http_client.session.close()
     scheduler.shutdown()
     print("Планировщик остановлен\n")
 
@@ -144,20 +148,22 @@ async def webhook(
     return JSONResponse(status_code=200, content={"ok": "worked"})
 
 
-async def main():
-    """Точка входа, запуск программы"""
-    url_web_hook = sys.argv[1:]
-    tuna_url = url_web_hook if len(url_web_hook) > 0 else "https://127.0.0.1"
-    async with aiohttp.ClientSession() as session:
-        whook = await set_webhook(session, tuna_url)
-        print(whook)
+# async def main():
+#     """Точка входа, запуск программы"""
+#     url_web_hook = sys.argv[1:]
+#     print(url_web_hook)
+#     tuna_url = url_web_hook if len(url_web_hook) > 0 else "https://127.0.0.1"
+#     print(tuna_url)
+#     async with aiohttp.ClientSession() as session:
+#         whook = await set_webhook(session, tuna_url)
+#         print(whook)
+  
+
+if __name__ == "__main__":
     uvicorn.run(
         "src.main:app",
         host="0.0.0.0",
         port=5000,
         reload=True
     )
-  
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    # asyncio.run(main())
