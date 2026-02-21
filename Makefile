@@ -1,4 +1,4 @@
 run:
-	uvicorn src.main:app --port 5000 --reload
+	./.venv/bin/python3 -m src.main
 run_tuna:
 	tuna http 5000
