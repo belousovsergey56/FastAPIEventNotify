@@ -1,6 +1,5 @@
 from pydantic import BaseModel
-from typing import List
-
+from typing import Optional
 
 class CheckBotResult(BaseModel):
     id: int
@@ -16,4 +15,6 @@ class CheckBotResult(BaseModel):
 
 class CheckBotSchema(BaseModel):
     ok: bool
-    result: CheckBotResult
+    result: Optional[CheckBotResult] = None
+    error_code: Optional[int] = None
+    desctiption: Optional[str] = None
