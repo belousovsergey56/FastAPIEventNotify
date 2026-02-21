@@ -8,6 +8,10 @@ from src.services.api_kudago import collect_data
 
 
 async def background_notification():
+    """Фоновая рассылка
+    Функция используется планировщиком, чтобы в фоновом режиме
+    осуществлять рассылку с событиями на текущий день.
+    """
     async with ClientSession(timeout=config.get_timeout()) as session:
         async with async_session() as db:
             chats = await get_chat_list(db)
