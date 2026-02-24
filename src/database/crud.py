@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from src.models.chats import Chat
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 
 async def create_chat_id(
@@ -71,12 +71,14 @@ async def delete_chat(db_session: AsyncSession, chat_id: int) -> bool:
         bool: True если успех, False если ошибка
 
     """
-    get_chat = await read_chat(db_session, chat_id)
-    if not get_chat:
+    try:
+        stmt = delete(Chat).where(Chat.chat_id == chat_id)
+        result = await db_session.execute(stmt)
+        await db_session.commit()
+        return result.rowcount > 0
+    except Exception:
+        await db_session.rollback()
         return False
-    await db_session.delete(get_chat)
-    await db_session.commit()
-    return True
 
 
 async def get_chat_list(db_session: AsyncSession) -> list[Chat]:
