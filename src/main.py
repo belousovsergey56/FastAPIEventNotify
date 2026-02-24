@@ -4,7 +4,7 @@ import uvicorn
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
-from fastapi import Request
+from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse, Response
 from src.core.config import config
 from src.dependencies.http_client import get_aiohttp_session, http_client
@@ -22,8 +22,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
     """Управление ресурсами"""
-    http_client.session = aiohttp.ClientSession(timeout=config.get_timeout())
-
+    header = {
+        "User-Agent": "FastAPIEventNotifyBot/1.0",
+        "Accept": "application/json",
+    }
+    http_client.session = aiohttp.ClientSession(
+                                timeout=config.get_timeout(),
+                                headers=header
+                            )
     webhook_url = sys.argv[1] if len(sys.argv) > 1 else "https://127.0.0.1"
     try:
         status = await set_webhook(http_client.session, webhook_url)
@@ -54,7 +60,7 @@ async def index(
     Основная стараница возвращает результат CheckBotSchema
     """
     result: CheckBotSchema = await check_bot(session)
-    return CheckBotSchema(**result)
+    return result
 
 
 @app.post("/add/{chat_id}", response_model=AddToDBSchema, responses={
@@ -72,7 +78,10 @@ async def add_chat(
 
 @app.delete("/delete_chat/{chat_id}",
             status_code=204,
-            responses={404: {"description": "Не найден идентификатор для удаления"}})
+            responses={
+                404: {"description": "Не найден идентификатор для удаления"},
+                204: {"description": "Чат удалён"}
+            })
 async def deleted_chat(
     chat_id: int,
     db: AsyncSession = Depends(get_db)
@@ -114,22 +123,24 @@ async def webhook(
     try:
         payload = await request.json()
         if "message" in payload:
-            list_chat_id = [i.chat_id for i in await get_chat_list(db)]
             chat_id = payload["message"]["chat"]["id"]
             tg_message = payload["message"]["text"]
             if tg_message == "/start":
-                if chat_id in list_chat_id:
-                    await send_message(session, chat_id, "Чат в расписание уже был добавлен")
-                else:
-                    await create_chat_id(db, int(chat_id))
+                try:
+                    await create_chat_id(db, chat_id)
                     await send_message(
                                    session,
                                    chat_id,
                                    "Чат добавлен в расписание, события каждый день")
                     await send_message(session, chat_id, "Подготовка первых событий")
                     await send_event_response(session, chat_id)
+                except HTTPException as e:
+                    if e.status_code == 409:
+                        await send_message(session, chat_id, "Чат в расписание уже был добавлен")
+                    else:
+                        raise e
             elif tg_message == "/delete":
-                deleted = await delete_chat(db, int(chat_id))
+                deleted = await delete_chat(db, chat_id)
                 if deleted:
                     await send_message(session, chat_id, "Рассылка отменена")
                 else:
@@ -148,17 +159,6 @@ async def webhook(
     return JSONResponse(status_code=200, content={"ok": "worked"})
 
 
-# async def main():
-#     """Точка входа, запуск программы"""
-#     url_web_hook = sys.argv[1:]
-#     print(url_web_hook)
-#     tuna_url = url_web_hook if len(url_web_hook) > 0 else "https://127.0.0.1"
-#     print(tuna_url)
-#     async with aiohttp.ClientSession() as session:
-#         whook = await set_webhook(session, tuna_url)
-#         print(whook)
-  
-
 if __name__ == "__main__":
     uvicorn.run(
         "src.main:app",
@@ -166,4 +166,3 @@ if __name__ == "__main__":
         port=5000,
         reload=True
     )
-    # asyncio.run(main())
