@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class CheckBotResult(BaseModel):
@@ -24,3 +24,45 @@ class WebHookSchema(BaseModel):
     result: Optional[bool] = None
     description: str
     error_code: Optional[int] = None
+
+class FromBot(BaseModel):
+    id: int
+    is_bot: bool
+    first_name: str
+    username: Optional[str]
+
+class ChatData(BaseModel):
+    id: int
+    first_name: Optional[str]
+    last_name: Optional[str]
+    username: Optional[str]
+    type: str
+
+
+class SendResult(BaseModel):
+    message_id: int
+    from_bot: FromBot = Field(..., alias="from")  
+    chat: ChatData
+    date: int
+
+class TextMessageResult(SendResult):
+    text: str
+
+class SendMessageSchema(BaseModel):
+    ok: bool
+    result: TextMessageResult
+
+class PhotoSize(BaseModel):
+    file_id: str
+    file_unique_id: str
+    file_size: int
+    width: int
+    height: int
+
+class SendPhotoResult(SendResult):
+    photo: list[PhotoSize]
+    caption: Optional[str] = None
+    
+class SendPhotoSchema(BaseModel):
+    ok: bool
+    result: SendPhotoResult
