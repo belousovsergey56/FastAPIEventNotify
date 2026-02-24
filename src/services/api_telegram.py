@@ -2,9 +2,10 @@ import aiohttp
 
 from src.core.config import config
 from src.schemas.tg_schema import CheckBotSchema, WebHookSchema
+from src.schemas.tg_schema import SendMessageSchema, SendPhotoSchema
+
 
 URL = f"{config.tg_url}/bot{config.tg_token}"
-
 
 
 async def check_bot(session: aiohttp.ClientSession) -> CheckBotSchema:
@@ -31,10 +32,14 @@ async def check_bot(session: aiohttp.ClientSession) -> CheckBotSchema:
     """
     async with session.get(f"{URL}/getMe") as resp:
         raw = await resp.json()
-        return raw
+        return CheckBotSchema(**raw)
 
 
-async def send_message(session: aiohttp.ClientSession, chat_id: str, message: str):
+async def send_message(
+    session: aiohttp.ClientSession,
+    chat_id: str,
+    message: str
+) -> SendMessageSchema:
     """Отправить сообщение
     Функция отправки сообщения на ресурс - в чат бот
     Args:
@@ -50,8 +55,7 @@ async def send_message(session: aiohttp.ClientSession, chat_id: str, message: st
             }
     async with session.post(url, json=param) as resp:
         raw = await resp.json()
-        print(raw)
-    return raw
+    return SendMessageSchema(**raw)
 
 
 async def send_image(
@@ -59,7 +63,7 @@ async def send_image(
     chat_id: str,
     image_url: str,
     caption_text: str
-):
+) -> SendPhotoSchema:
     """Отправить фото с подписью
     Args:
         chat_id (str): идентификатор чата
@@ -74,7 +78,7 @@ async def send_image(
             }
     async with session.post(url, data=param) as resp:
         raw = await resp.json()
-    return raw
+    return SendPhotoSchema(**raw)
 
 
 async def set_webhook(
