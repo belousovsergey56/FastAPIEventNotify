@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     api_version: str
     tg_url: str
     tg_token: str
-    timeout: int = 30
+    timeout: int = 60
     db_url: str
     _client_timeout: aiohttp.ClientTimeout = PrivateAttr(default=None)
     
