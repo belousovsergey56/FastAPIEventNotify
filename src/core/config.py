@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     timeout: int = 60
     db_url: str
     _client_timeout: aiohttp.ClientTimeout = PrivateAttr(default=None)
-    log_level: str = "DEBUG"
+    log_level: str = "INFO"
     log_file_path: str = "src/logs/app.logs"
     log_max_bytes: int = 5 * 1024 * 1024
     log_backup_count: int = 3

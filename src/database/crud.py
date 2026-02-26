@@ -1,9 +1,11 @@
+import logging
 from fastapi import HTTPException
 from src.models.chats import Chat
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy import select, delete
 
+logger = logging.getLogger(__name__)
 
 async def create_chat_id(
     db_session: AsyncSession,
@@ -24,15 +26,18 @@ async def create_chat_id(
     try:
         await db_session.commit()
         await db_session.refresh(new_chat)
+        logger.info(f"Successfully added new chat to database: {chat_id}")
         return new_chat
     except IntegrityError:
         await db_session.rollback()
+        logger.warning(f"Attempt to add duplicate chat_idAttempt to add duplicate chat_id {chat_id}")
         raise HTTPException(
             status_code=409,
             detail=f"Идентификатор чата {chat_id} уже существует"
         )
     except Exception:
         await db_session.rollback()
+        logger.error(f"ailed to create chat {chat_id} due to unexpected error")
         raise HTTPException(
             status_code=500,
             detail="Ошибка при добавлении в базу"
