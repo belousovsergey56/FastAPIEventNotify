@@ -18,7 +18,8 @@ from src.services.scheduler import scheduler, background_notification
 from src.schemas.tg_schema import CheckBotSchema
 from src.schemas.endpoint_schema import AddToDBSchema
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.utils.get_chat_id import inject_chat_id
+
+# from src.utils.get_chat_id import inject_chat_id
 
 
 @asynccontextmanager
@@ -31,9 +32,8 @@ async def lifespan(app: FastAPI) -> None:
         "Accept": "application/json",
     }
     http_client.session = aiohttp.ClientSession(
-                                timeout=config.get_timeout(),
-                                headers=header
-                            )
+        timeout=config.get_timeout(), headers=header
+    )
     webhook_url = sys.argv[1] if len(sys.argv) > 1 else "https://127.0.0.1"
     try:
         status = await set_webhook(http_client.session, webhook_url)
@@ -52,15 +52,13 @@ async def lifespan(app: FastAPI) -> None:
         print("Планировщик остановлен\n")
         listener.stop()
 
-app = FastAPI(
-    title="FastAPI Event notify",
-    lifespan=lifespan
-)
+
+app = FastAPI(title="FastAPI Event notify", lifespan=lifespan)
 
 
 @app.get("/", response_model=CheckBotSchema)
 async def index(
-    session: aiohttp.ClientSession = Depends(get_aiohttp_session)
+    session: aiohttp.ClientSession = Depends(get_aiohttp_session),
 ) -> CheckBotSchema:
     """Главная страница\n
     Основная стараница возвращает результат CheckBotSchema
@@ -69,29 +67,31 @@ async def index(
     return result
 
 
-@app.post("/add/{chat_id}", response_model=AddToDBSchema, responses={
-              409: {"description": "Идентификатор уже существует"},
-              500: {"description": "Ошибка при добавлении в базу"}
-          })
+@app.post(
+    "/add/{chat_id}",
+    response_model=AddToDBSchema,
+    responses={
+        409: {"description": "Идентификатор уже существует"},
+        500: {"description": "Ошибка при добавлении в базу"},
+    },
+)
 async def add_chat(
-    chat_id: int,
-    session: AsyncSession = Depends(get_db)
+    chat_id: int, session: AsyncSession = Depends(get_db)
 ) -> AddToDBSchema:
     """Добавить id чата в базу"""
     new_chat: Chat = await create_chat_id(session, chat_id)
     return AddToDBSchema(chat_id=new_chat.chat_id)
 
 
-@app.delete("/delete_chat/{chat_id}",
-            status_code=204,
-            responses={
-                404: {"description": "Не найден идентификатор для удаления"},
-                204: {"description": "Чат удалён"}
-            })
-async def deleted_chat(
-    chat_id: int,
-    db: AsyncSession = Depends(get_db)
-) -> Response:
+@app.delete(
+    "/delete_chat/{chat_id}",
+    status_code=204,
+    responses={
+        404: {"description": "Не найден идентификатор для удаления"},
+        204: {"description": "Чат удалён"},
+    },
+)
+async def deleted_chat(chat_id: int, db: AsyncSession = Depends(get_db)) -> Response:
     """Удалить чат из базы"""
     deleted = await delete_chat(db, chat_id)
     if deleted:
@@ -99,32 +99,39 @@ async def deleted_chat(
     return Response(status_code=404)
 
 
-@app.get("/read_chat/{chat_id}", status_code=200, responses={
-             200: {"description": "Успешное чтение базы"},
-             404: {"description": "Идентификатор отсутвует в базе"},
-         })
+@app.get(
+    "/read_chat/{chat_id}",
+    status_code=200,
+    responses={
+        200: {"description": "Успешное чтение базы"},
+        404: {"description": "Идентификатор отсутвует в базе"},
+    },
+)
 async def get_chat(chat_id: int, db: AsyncSession = Depends(get_db)):
     """Получить данные по id из базы"""
     data_chat = await read_chat(db, chat_id)
     return {"result": data_chat}
 
 
-@app.get("/chat_list", response_model=list[int], responses={
-             200: {"description": "Успешное обращение к базе"},
-             500: {"description": "Ошибка при обращении к базе"}
-         },
-         status_code=200)
+@app.get(
+    "/chat_list",
+    response_model=list[int],
+    responses={
+        200: {"description": "Успешное обращение к базе"},
+        500: {"description": "Ошибка при обращении к базе"},
+    },
+    status_code=200,
+)
 async def chat_list(db: AsyncSession = Depends(get_db)) -> list[int]:
     """Получить список id чатов"""
     return [i.chat_id for i in await get_chat_list(db)]
 
 
 @app.post("/webhook")
-@inject_chat_id
 async def webhook(
     request: Request,
     session: aiohttp.ClientSession = Depends(get_aiohttp_session),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
     """Основное взаимодействие с телеграм чатом"""
     try:
@@ -136,14 +143,17 @@ async def webhook(
                 try:
                     await create_chat_id(db, chat_id)
                     await send_message(
-                                   session,
-                                   chat_id,
-                                   "Чат добавлен в расписание, события каждый день")
+                        session,
+                        chat_id,
+                        "Чат добавлен в расписание, события каждый день",
+                    )
                     await send_message(session, chat_id, "Подготовка первых событий")
                     await send_event_response(session, chat_id)
                 except HTTPException as e:
                     if e.status_code == 409:
-                        await send_message(session, chat_id, "Чат в расписание уже был добавлен")
+                        await send_message(
+                            session, chat_id, "Чат в расписание уже был добавлен"
+                        )
                     else:
                         raise e
             elif tg_message == "/delete":
@@ -151,9 +161,13 @@ async def webhook(
                 if deleted:
                     await send_message(session, chat_id, "Рассылка отменена")
                 else:
-                    await send_message(session, chat_id, "В списке рассылок нет текущего чата")
+                    await send_message(
+                        session, chat_id, "В списке рассылок нет текущего чата"
+                    )
             elif tg_message == "/event":
-                await send_message(session, chat_id, "Собираем данные о событиях, минуту...")
+                await send_message(
+                    session, chat_id, "Собираем данные о событиях, минуту..."
+                )
                 await send_event_response(session, chat_id)
             elif tg_message == "/help":
                 message = "/start - добавляет чат в расписание для ежедневной отправки сообщений о событияx\n"
@@ -167,9 +181,4 @@ async def webhook(
 
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "src.main:app",
-        host="0.0.0.0",
-        port=5000,
-        reload=True
-    )
+    uvicorn.run("src.main:app", host="0.0.0.0", port=5000, reload=True)

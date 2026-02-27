@@ -9,25 +9,29 @@ from src.schemas.kudago_schema import (
     SchemaGetCollections,
     SchemaGetMovieList,
     SchemaGetNews,
-    )
+)
+from src.utils.debug_logs import log_debug
 
 
+@log_debug
 def to_unixtime() -> int:
     """Получить текущее время в unixtime формате.
     Returns:
-        int: 1763715782 unixtime формат, целое число 
+        int: 1763715782 unixtime формат, целое число
     """
     return int(datetime.now().timestamp())
 
 
+@log_debug
 def to_datetime(unixtime: int) -> str:
     """Преобразовать unixtime в datetime.
     Returns:
-        str: возвращается строка вормате "2025-11-21 12:12:25" 
+        str: возвращается строка вормате "2025-11-21 12:12:25"
     """
     return str(datetime.fromtimestamp(unixtime))
 
 
+@log_debug
 def date_event(dates: list[dict[str, int]]) -> str:
     """Преобразовать список дат в строку
     Обходит список дат, преобразует из unixtime в datetime и сохраняет в строку
@@ -44,73 +48,77 @@ def date_event(dates: list[dict[str, int]]) -> str:
     """
     result = []
     now_unix = int(datetime.now().timestamp())
-    
+
     for date_dict in dates:
         start_unix = date_dict.get("start")
         if start_unix is None or start_unix < now_unix:
             continue
         end_unix = date_dict.get("end", start_unix)
-        
+
         start_dt = datetime.fromtimestamp(start_unix)
         end_dt = datetime.fromtimestamp(end_unix)
         result.append(f"С {start_dt} по {end_dt}")
-    
+
     return "\n".join(result) if result else ""
 
 
+@log_debug
 async def get_events(session: aiohttp.ClientSession) -> SchemaGetEvents:
     """Получить список мероприятий
-    Returns:
-        dict: Возвращается словарь 
-        в котором есть ключ results, это список
-        словарей с событиями
-        {
-    "count": 82677,
-    "next": "https://kudago.com/public-api/v1.2/events/?fields=age_restriction%2Cis_free&page=2",
-    "previous": null,
-    "results": [
+        Returns:
+            dict: Возвращается словарь
+            в котором есть ключ results, это список
+            словарей с событиями
+            {
+        "count": 82677,
+        "next": "https://kudago.com/public-api/v1.2/events/?fields=age_restriction%2Cis_free&page=2",
+        "previous": null,
         "results": [
-      {
-        "dates": [
+            "results": [
           {
-            "start": -62135433000,
-            "end": 253370754000
+            "dates": [
+              {
+                "start": -62135433000,
+                "end": 253370754000
+              }
+            ],
+            "description": "Камерная экскурсия, которая оставит вас наедине с мыслями ленинградцев в осаждённом городе. Прогулка построена на основе записок и ценна тем, что воспоминаниями о блокаде пережившие её люди делились неохотно. Начните экскурсию тогда, когда будете готовы.",
+            "images": [
+              {
+                "image": "https://media.kudago.com/images/event/b5/f8/b5f81286943a865cc5eac9a17e5914f2.jpg",
+                "source": {
+                  "name": "spbzoo.ru",
+                  "link": "http://www.spbzoo.ru/o_nas/istoriya-zooparka/poslevoennoe-vosstanovlenie/"
+                }
+              }
+            ],
+            "place": {
+              "id": 3037
+            },
+            "title": "Аудиоэкскурсия «Блокада на Петроградской стороне с Софьей Лурье»",
+            "price": ""
           }
-        ],
-        "description": "Камерная экскурсия, которая оставит вас наедине с мыслями ленинградцев в осаждённом городе. Прогулка построена на основе записок и ценна тем, что воспоминаниями о блокаде пережившие её люди делились неохотно. Начните экскурсию тогда, когда будете готовы.",
-        "images": [
-          {
-            "image": "https://media.kudago.com/images/event/b5/f8/b5f81286943a865cc5eac9a17e5914f2.jpg",
-            "source": {
-              "name": "spbzoo.ru",
-              "link": "http://www.spbzoo.ru/o_nas/istoriya-zooparka/poslevoennoe-vosstanovlenie/"
-            }
-          }
-        ],
-        "place": {
-          "id": 3037
-        },
-        "title": "Аудиоэкскурсия «Блокада на Петроградской стороне с Софьей Лурье»",
-        "price": ""
-      }
-    ]
-}
+        ]
+    }
     """
     param = {
-            "page": 1,
-            "page_size": 5,
-            "fields": "images,dates,title,place,description,price",
-            "location": "spb",
-            "actual_since": to_unixtime(),
-            "text_format":"text"
-            }
+        "page": 1,
+        "page_size": 5,
+        "fields": "images,dates,title,place,description,price",
+        "location": "spb",
+        "actual_since": to_unixtime(),
+        "text_format": "text",
+    }
     url = config.get_full_url()
     async with session.get(f"{url}/events", params=param) as resp:
         raw = await resp.json()
     return SchemaGetEvents(**raw)
 
 
-async def get_places(session: aiohttp.ClientSession, place_id: int|None) -> SchemaGetPlaces:
+@log_debug
+async def get_places(
+    session: aiohttp.ClientSession, place_id: int | None
+) -> SchemaGetPlaces:
     """Получить назвние и адрес места по id.
     Args:
         place_id (int): id места
@@ -132,18 +140,19 @@ async def get_places(session: aiohttp.ClientSession, place_id: int|None) -> Sche
     if place_id is None:
         return {}
     param = {
-            "page": 1,
-            "page_size": 1,
-            "fields":"id,title,address",
-            "text_format": "text",
-            "ids": place_id
-            }
+        "page": 1,
+        "page_size": 1,
+        "fields": "id,title,address",
+        "text_format": "text",
+        "ids": place_id,
+    }
     url = config.get_full_url()
     async with session.get(f"{url}/places", params=param) as resp:
         raw = await resp.json()
     return SchemaGetPlaces(**raw)
 
 
+@log_debug
 async def get_collections(session: aiohttp.ClientSession) -> SchemaGetCollections:
     """Получить список подборок редакции
     При тестировании от текущей даты, апи
@@ -167,53 +176,54 @@ async def get_collections(session: aiohttp.ClientSession) -> SchemaGetCollection
             }
     """
     param = {
-            "page": 1,
-            "page_size": 2,
-            "location": "spb",
-            "fields": "title,site_url",
-           "text_format": "text"
-            }
+        "page": 1,
+        "page_size": 2,
+        "location": "spb",
+        "fields": "title,site_url",
+        "text_format": "text",
+    }
     url = f"{config.get_full_url()}/lists"
     async with session.get(url, params=param) as resp:
         raw = await resp.json()
     return SchemaGetCollections(**raw)
 
 
+@log_debug
 async def get_movie_list(session: aiohttp.ClientSession) -> SchemaGetMovieList:
     """Получить список фильмов.
-    Функция возвращает список словарей в колличестве
-    трёх штук, где есть описание фильма, его название,
-    дата публикации и ссылка на постер.
-    Returns:
-        dict: Пример возвращаемого словаря
-{
-  "count": 36,
-  "next": "https://kudago.com/public-api/v1.4/movies/?actual_since=1770113358&fields=id%2Ctitle%2Cdescription%2Cimages&location=spb&page=2&page_size=3&text_format=text",
-  "previous": null,
-  "results": [
+        Функция возвращает список словарей в колличестве
+        трёх штук, где есть описание фильма, его название,
+        дата публикации и ссылка на постер.
+        Returns:
+            dict: Пример возвращаемого словаря
     {
-      "id": 6681,
-      "title": "Код: Неизвестен",
-      "description": "Фильм Михаэля Ханеке о случайности как движущей силе современного мира.",
-      "images": [
+      "count": 36,
+      "next": "https://kudago.com/public-api/v1.4/movies/?actual_since=1770113358&fields=id%2Ctitle%2Cdescription%2Cimages&location=spb&page=2&page_size=3&text_format=text",
+      "previous": null,
+      "results": [
         {
-          "image": "https://media.kudago.com/images/movie/d2/da/d2dac04c5db3daf02497964eb9b7fe69.webp",
-          "source": {
-            "name": "kinopoisk.ru",
-            "link": "https://www.kinopoisk.ru/film/18342/stills/page/1/"
-          }
-        },
-        {
-          "image": "https://media.kudago.com/images/movie/ec/1d/ec1d1b592f5ae538968326588426a9df.webp",
-          "source": {
-            "name": "kinopoisk.ru",
-            "link": "https://www.kinopoisk.ru/film/18342/stills/page/1/"
-          }
-        },
+          "id": 6681,
+          "title": "Код: Неизвестен",
+          "description": "Фильм Михаэля Ханеке о случайности как движущей силе современного мира.",
+          "images": [
+            {
+              "image": "https://media.kudago.com/images/movie/d2/da/d2dac04c5db3daf02497964eb9b7fe69.webp",
+              "source": {
+                "name": "kinopoisk.ru",
+                "link": "https://www.kinopoisk.ru/film/18342/stills/page/1/"
+              }
+            },
+            {
+              "image": "https://media.kudago.com/images/movie/ec/1d/ec1d1b592f5ae538968326588426a9df.webp",
+              "source": {
+                "name": "kinopoisk.ru",
+                "link": "https://www.kinopoisk.ru/film/18342/stills/page/1/"
+              }
+            },
+          ]
       ]
-  ]
-}
-}
+    }
+    }
     """
     param = {
         "page": 1,
@@ -229,6 +239,7 @@ async def get_movie_list(session: aiohttp.ClientSession) -> SchemaGetMovieList:
     return SchemaGetMovieList(**raw)
 
 
+@log_debug
 async def get_news(session: aiohttp.ClientSession) -> SchemaGetNews:
     """Получить новости на сегодняшний день
     Returns:
@@ -258,19 +269,19 @@ async def get_news(session: aiohttp.ClientSession) -> SchemaGetNews:
         "page": 1,
         "page_size": 1,
         "fields": "title,description,images,site_url",
-        "actual_only": 1,      
+        "actual_only": 1,
         "location": "spb",
-        "text_format": "text"
-        }
+        "text_format": "text",
+    }
     url = f"{config.get_full_url()}/news"
     async with session.get(url, params=param) as resp:
         raw = await resp.json()
     return SchemaGetNews(**raw)
 
 
+@log_debug
 async def process_collect_data(
-    session: aiohttp.ClientSession,
-    data: list[dict]
+    session: aiohttp.ClientSession, data: list[dict]
 ) -> list[dict]:
     """Формирует полученные данные в список
     Полученные данные по событиям, подготавливает и добавляет в список
@@ -287,11 +298,8 @@ async def process_collect_data(
             for collect in result.results:
                 collect = collect.model_dump()
                 data_list.append(
-                        {
-                        "title": collect.get("title"),
-                        "site_url": collect.get("site_url")
-                        }
-                    )
+                    {"title": collect.get("title"), "site_url": collect.get("site_url")}
+                )
         # Список событий
         if isinstance(result, SchemaGetEvents):
             for events in result.results:
@@ -305,15 +313,15 @@ async def process_collect_data(
                     place = ""
 
                 data_list.append(
-                        {
-                            "title": event.get("title"),
-                            "description": event.get("description"),
-                            "place": place,
-                            "price": event.get("price"),
-                            "image": event.get("images")[0].get("image"),
-                            "dates": date_event(event.get("dates"))
-                            }
-                        )
+                    {
+                        "title": event.get("title"),
+                        "description": event.get("description"),
+                        "place": place,
+                        "price": event.get("price"),
+                        "image": event.get("images")[0].get("image"),
+                        "dates": date_event(event.get("dates")),
+                    }
+                )
         # список фильмов
         if isinstance(result, SchemaGetMovieList):
             for movie in result.results:
@@ -323,20 +331,20 @@ async def process_collect_data(
                         "title": movie.get("title"),
                         "description": movie.get("description"),
                         "image": movie.get("images")[0].get("image"),
-                        }
-                    )
+                    }
+                )
         # список новостей
         if isinstance(result, SchemaGetNews):
             for tidings in result.results:
                 tidings = tidings.model_dump()
                 data_list.append(
-                        {
-                            "title": tidings.get("title"),
-                            "description": tidings.get("description"),
-                            "image": tidings.get("images")[0].get("image"),
-                            "site_url": tidings.get("site_url")
-                            }
-                        )
+                    {
+                        "title": tidings.get("title"),
+                        "description": tidings.get("description"),
+                        "image": tidings.get("images")[0].get("image"),
+                        "site_url": tidings.get("site_url"),
+                    }
+                )
     return data_list
 
 

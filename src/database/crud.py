@@ -4,12 +4,12 @@ from src.models.chats import Chat
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy import select, delete
+from src.utils.debug_logs import log_debug
 
-logger = logging.getLogger(__name__)
 
+@log_debug
 async def create_chat_id(
-    db_session: AsyncSession,
-    chat_id: int
+    db_session: AsyncSession, chat_id: int
 ) -> Chat | HTTPException:
     """Добавить чат id в базу
     Args:
@@ -26,28 +26,19 @@ async def create_chat_id(
     try:
         await db_session.commit()
         await db_session.refresh(new_chat)
-        logger.info(f"Successfully added new chat to database: {chat_id}")
         return new_chat
     except IntegrityError:
         await db_session.rollback()
-        logger.warning(f"Attempt to add duplicate chat_idAttempt to add duplicate chat_id {chat_id}")
         raise HTTPException(
-            status_code=409,
-            detail=f"Идентификатор чата {chat_id} уже существует"
+            status_code=409, detail=f"Идентификатор чата {chat_id} уже существует"
         )
     except Exception:
         await db_session.rollback()
-        logger.error(f"ailed to create chat {chat_id} due to unexpected error")
-        raise HTTPException(
-            status_code=500,
-            detail="Ошибка при добавлении в базу"
-        )
+        raise HTTPException(status_code=500, detail="Ошибка при добавлении в базу")
 
 
-async def read_chat(
-    db_session: AsyncSession,
-    chat_id: int
-) -> Chat | HTTPException:
+@log_debug
+async def read_chat(db_session: AsyncSession, chat_id: int) -> Chat | HTTPException:
     """Прочитать из базы по идентификатору чата
     Args:
         db_session (AsyncSession): сессия для работы с базой
@@ -61,12 +52,13 @@ async def read_chat(
     chat = await db_session.get(Chat, chat_id)
     if chat is None:
         raise HTTPException(
-                status_code=404,
-                detail=f"Чат с идентификатором {chat_id} отсутствует в базе"
-            )
+            status_code=404,
+            detail=f"Чат с идентификатором {chat_id} отсутствует в базе",
+        )
     return chat
 
 
+@log_debug
 async def delete_chat(db_session: AsyncSession, chat_id: int) -> bool:
     """Удалить чат
     Args:
@@ -86,6 +78,7 @@ async def delete_chat(db_session: AsyncSession, chat_id: int) -> bool:
         return False
 
 
+@log_debug
 async def get_chat_list(db_session: AsyncSession) -> list[Chat]:
     """Получить список чатов
     Args:
@@ -95,14 +88,10 @@ async def get_chat_list(db_session: AsyncSession) -> list[Chat]:
             [{
                 chat_id: chat_id,
                 created_at: YYYY-MM_DDTHH:MM:SS
-            },]        
+            },]
     """
     try:
         chat_list = await db_session.execute(select(Chat))
         return list(chat_list.scalars().all())
-    except SQLAlchemyError as e:
-        print(e)
-        raise HTTPException(
-            status_code=500,
-            detail="Ошибка при обращении к базе"
-        )
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Ошибка при обращении к базе")

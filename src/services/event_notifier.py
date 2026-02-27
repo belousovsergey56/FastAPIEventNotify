@@ -1,8 +1,10 @@
 from aiohttp import ClientSession
 from src.services.api_kudago import collect_data
 from src.services.api_telegram import send_message, send_image
+from src.utils.debug_logs import log_debug
 
 
+@log_debug
 def prepare_message(event: dict) -> str:
     """Подготовить сообщение
     Функция готовит текст сообщения для отправки в ТГ
@@ -25,11 +27,9 @@ def prepare_message(event: dict) -> str:
     return message
 
 
+@log_debug
 async def post_event(
-    session: ClientSession,
-    chat_id: str,
-    message: str,
-    url_image: str=None
+    session: ClientSession, chat_id: str, message: str, url_image: str = None
 ) -> None:
     """Отправить сообщение в ТГ
     Отправка сообщения в ТГ, с картинкой или без
@@ -45,6 +45,7 @@ async def post_event(
         await send_image(session, chat_id, url_image, message)
 
 
+@log_debug
 async def send_event_response(session: ClientSession, chat_id: str) -> None:
     """Подготовить и отправить сообщение
     Выполняется сбор данных, затем обработка, затем отправка сообщения в ТГ

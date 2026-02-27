@@ -5,8 +5,10 @@ from src.database.crud import get_chat_list
 from src.database.session import async_session
 from src.services.event_notifier import prepare_message, post_event
 from src.services.api_kudago import collect_data
+from src.utils.debug_logs import log_debug
 
 
+@log_debug
 async def background_notification():
     """Фоновая рассылка
     Функция используется планировщиком, чтобы в фоновом режиме
@@ -31,5 +33,6 @@ async def background_notification():
                     await post_event(session, chat_id, message, img_url)
                 except Exception as e:
                     print(f"Сообщение не отправлено. Чат: {chat_id}, {e}")
+
 
 scheduler = AsyncIOScheduler()

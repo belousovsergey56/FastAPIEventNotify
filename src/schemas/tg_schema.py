@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
+
 class CheckBotResult(BaseModel):
     id: int
     is_bot: bool
@@ -13,11 +14,13 @@ class CheckBotResult(BaseModel):
     has_main_web_app: bool
     has_topics_enabled: bool
 
+
 class CheckBotSchema(BaseModel):
     ok: bool
     result: Optional[CheckBotResult] = None
     error_code: Optional[int] = None
     desctiption: Optional[str] = None
+
 
 class WebHookSchema(BaseModel):
     ok: bool
@@ -25,11 +28,13 @@ class WebHookSchema(BaseModel):
     description: str
     error_code: Optional[int] = None
 
+
 class FromBot(BaseModel):
     id: int
     is_bot: bool
     first_name: str
     username: Optional[str]
+
 
 class ChatData(BaseModel):
     id: int
@@ -41,16 +46,19 @@ class ChatData(BaseModel):
 
 class SendResult(BaseModel):
     message_id: int
-    from_bot: FromBot = Field(..., alias="from")  
+    from_bot: FromBot = Field(..., alias="from")
     chat: ChatData
     date: int
+
 
 class TextMessageResult(SendResult):
     text: str
 
+
 class SendMessageSchema(BaseModel):
     ok: bool
     result: TextMessageResult
+
 
 class PhotoSize(BaseModel):
     file_id: str
@@ -59,10 +67,12 @@ class PhotoSize(BaseModel):
     width: int
     height: int
 
+
 class SendPhotoResult(SendResult):
     photo: list[PhotoSize]
     caption: Optional[str] = None
-    
+
+
 class SendPhotoSchema(BaseModel):
     ok: bool
     result: SendPhotoResult
